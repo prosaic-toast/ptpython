@@ -27,7 +27,7 @@ class PythonValidator(Validator):
 
         # When the input starts with Ctrl-Z, always accept. This means EOF in a
         # Python REPL.
-        if text.startswith("\x1a"):
+        if text.startswith("\x1a") or text.startswith('!') or text.startswith('%'):
             return
 
         try:

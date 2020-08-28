@@ -124,6 +124,18 @@ class PythonRepl(PythonInput):
             self.current_statement_index += 1
             self.signatures = []
 
+    def _run_magic(self, line):
+        try:
+            cmd, args = line.split(None, 1)
+            if cmd == 'run':
+                for arg in args.split():
+                    exec(open(args, 'rt').read(), self.get_globals())
+            else:
+                raise RuntimeError(f'Invalid magic command {cmd}')
+        except Exception:
+            traceback.print_exc()
+
+
     def _execute(self, line: str) -> None:
         """
         Evaluate the line and print the result.
@@ -157,6 +169,8 @@ class PythonRepl(PythonInput):
         elif line.lstrip().startswith("!"):
             # Run as shell command
             os.system(line[1:])
+        elif line.lstrip().startswith("%"):
+            self._run_magic(line[1:])
         else:
             # Try eval first
             try:
@@ -283,7 +297,6 @@ def enable_deprecation_warnings() -> None:
          library on Python 2.7.
     """
     warnings.filterwarnings("default", category=DeprecationWarning, module="__main__")
-
 
 def run_config(repl: PythonInput, config_file: str = "~/.ptpython/config.py") -> None:
     """
