@@ -11,6 +11,7 @@ from prompt_toolkit.filters import (
 )
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.keys import Keys
+from prompt_toolkit.key_binding.bindings.named_commands import get_by_name
 
 from .utils import document_is_multiline_python
 
@@ -52,6 +53,24 @@ def load_python_bindings(python_input):
         Clear whole screen and render again -- also when the sidebar is visible.
         """
         event.app.renderer.clear()
+
+    """
+    C-a moves to start of the line even in Vi mode.
+    """
+    handle("c-a",
+            filter=~sidebar_visible
+        & vi_insert_mode
+        & has_focus(DEFAULT_BUFFER)
+        )(get_by_name("beginning-of-line"))
+
+    """
+    C-e moves to end of the line even in Vi mode.
+    """
+    handle("c-e",
+            filter=~sidebar_visible
+        & vi_insert_mode
+        & has_focus(DEFAULT_BUFFER)
+        )(get_by_name("end-of-line"))
 
     @handle("c-z")
     def _(event):
