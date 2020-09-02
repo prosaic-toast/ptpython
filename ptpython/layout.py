@@ -342,7 +342,7 @@ def status_bar(python_input: "PythonInput") -> Container:
         result: StyleAndTextTuples = []
         append = result.append
 
-        append((TB, " "))
+        append((TB, f"In[{python_input.current_statement_index}] "))
         result.extend(get_inputmode_fragments(python_input))
         append((TB, " "))
 
