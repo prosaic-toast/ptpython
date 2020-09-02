@@ -80,6 +80,15 @@ def load_python_bindings(python_input):
         if python_input.enable_system_bindings:
             event.app.suspend_to_background()
 
+
+    @handle("f1")
+    def _(event):
+        """
+        Show/hide docstring.
+        """
+        python_input.show_docstring = not python_input.show_docstring
+        event.app.layout.focus_last()
+
     @handle("f2")
     def _(event):
         """
