@@ -13,6 +13,7 @@ import os
 import sys
 import traceback
 import warnings
+import shlex
 from typing import Any, Callable, ContextManager, Dict, Optional
 
 from prompt_toolkit.document import Document
@@ -126,10 +127,25 @@ class PythonRepl(PythonInput):
 
     def _run_magic(self, line):
         try:
-            cmd, args = line.split(None, 1)
+            args = shlex.split(line)
+            cmd = args.pop(0)
             if cmd == 'run':
-                for arg in args.split():
-                    exec(open(args, 'rt').read(), self.get_globals())
+                if args:
+                    for arg in args:
+                        alt = f'{arg}.py'
+                        if not os.path.exists(arg) and os.path.exists(alt):
+                            arg = alt
+                        exec(open(arg, 'rt').read(), self.get_globals())
+                        print()
+                else:
+                    print('Usage: %run SCRIPT [...]\n')
+            elif cmd == 'cd':
+                if len(args) == 1:
+                    os.chdir(args[0])
+                else:
+                    print('Usage: %cd NEW_WORKING_DIRECTORY\n')
+            elif cmd == 'pwd':
+                print(f'{os.getcwd()}\n')
             else:
                 raise RuntimeError(f'Invalid magic command {cmd}')
         except Exception:
