@@ -44,7 +44,7 @@ class _Parser(argparse.ArgumentParser):
 
 def create_parser() -> _Parser:
     parser = _Parser(description="ptpython: Interactive Python shell.")
-    parser.add_argument("--vi", action="store_true", help="Enable Vi key bindings")
+    parser.add_argument("--vi", action="store_true", default=True, help="Enable Vi key bindings")
     parser.add_argument(
         "-i",
         "--interactive",

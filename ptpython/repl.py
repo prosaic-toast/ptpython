@@ -402,7 +402,7 @@ def embed(
     globals=None,
     locals=None,
     configure: Optional[Callable[[PythonRepl], None]] = None,
-    vi_mode: bool = False,
+    vi_mode: bool = True,
     history_filename: Optional[str] = None,
     title: Optional[str] = None,
     startup_paths=None,

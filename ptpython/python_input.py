@@ -161,8 +161,8 @@ class PythonInput:
         get_globals: Optional[_GetNamespace] = None,
         get_locals: Optional[_GetNamespace] = None,
         history_filename: Optional[str] = None,
-        vi_mode: bool = False,
-        color_depth: Optional[ColorDepth] = None,
+        vi_mode: bool = True,
+        color_depth: Optional[ColorDepth] = ColorDepth.DEPTH_24_BIT,
         # Input/output.
         input: Optional[Input] = None,
         output: Optional[Output] = None,
@@ -202,18 +202,18 @@ class PythonInput:
 
         # Settings.
         self.title: AnyFormattedText = ""
-        self.show_signature: bool = False
-        self.show_docstring: bool = False
+        self.show_signature: bool = True
+        self.show_docstring: bool = True
         self.show_meta_enter_message: bool = True
-        self.completion_visualisation: CompletionVisualisation = CompletionVisualisation.MULTI_COLUMN
-        self.completion_menu_scroll_offset: int = 1
+        self.completion_visualisation: CompletionVisualisation = CompletionVisualisation.POP_UP
+        self.completion_menu_scroll_offset: int = 0
 
         self.show_line_numbers: bool = False
         self.show_status_bar: bool = True
         self.wrap_lines: bool = True
-        self.complete_while_typing: bool = True
+        self.complete_while_typing: bool = False
         self.paste_mode: bool = False  # When True, don't insert whitespace after newline.
-        self.confirm_exit: bool = True  # Ask for confirmation when Control-D is pressed.
+        self.confirm_exit: bool = False  # Ask for confirmation when Control-D is pressed.
         self.accept_input_on_enter: int = 2  # Accept when pressing Enter 'n' times.
         # 'None' means that meta-enter is always required.
         self.enable_open_in_editor: bool = True
@@ -221,7 +221,7 @@ class PythonInput:
         self.enable_input_validation: bool = True
         self.enable_auto_suggest: bool = False
         self.enable_mouse_support: bool = False
-        self.enable_history_search: bool = False  # When True, like readline, going
+        self.enable_history_search: bool = True  # When True, like readline, going
         # back in history will filter the
         # history on the records starting
         # with the current input.
@@ -230,7 +230,7 @@ class PythonInput:
         self.enable_fuzzy_completion: bool = False
         self.enable_dictionary_completion: bool = False
         self.swap_light_and_dark: bool = False
-        self.highlight_matching_parenthesis: bool = False
+        self.highlight_matching_parenthesis: bool = True
         self.show_sidebar: bool = False  # Currently show the sidebar.
 
         # When the sidebar is visible, also show the help text.
@@ -243,7 +243,7 @@ class PythonInput:
         self.terminal_title: Optional[str] = None
 
         self.exit_message: str = "Do you really want to exit?"
-        self.insert_blank_line_after_output: bool = True  # (For the REPL.)
+        self.insert_blank_line_after_output: bool = False  # (For the REPL.)
 
         # The buffers.
         self.default_buffer = self._create_buffer()
