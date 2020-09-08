@@ -17,6 +17,7 @@ import shlex
 import pdb
 from typing import Any, Callable, ContextManager, Dict, Optional
 from functools import partial
+import time
 
 from prompt_toolkit.document import Document
 from prompt_toolkit.formatted_text import (
@@ -233,7 +234,11 @@ class PythonRepl(PythonInput):
             # Try eval first
             try:
                 code = compile_with_flags(line, "eval")
+                perf_counter = time.perf_counter_ns
+                clock0 = perf_counter()
                 result = eval(code, self.get_globals(), self.get_locals())
+                clock1 = perf_counter()
+                self.last_timing = clock1 - clock0
 
                 locals: Dict[str, Any] = self.get_locals()
                 locals["_"] = locals["_%i" % self.current_statement_index] = result
@@ -285,7 +290,11 @@ class PythonRepl(PythonInput):
             # If not a valid `eval` expression, run using `exec` instead.
             except SyntaxError:
                 code = compile_with_flags(line, "exec")
+                perf_counter = time.perf_counter_ns
+                clock0 = perf_counter()
                 exec(code, self.get_globals(), self.get_locals())
+                clock1 = perf_counter()
+                self.last_timing = clock1 - clock0
 
             output.flush()
 

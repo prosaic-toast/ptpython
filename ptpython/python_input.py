@@ -302,6 +302,8 @@ class PythonInput:
         # Preserve last used Vi input mode between main loop iterations
         self.vi_keep_last_used_mode: bool = False
 
+        self.last_timing = None
+
         self.style_transformation = merge_style_transformations(
             [
                 ConditionalStyleTransformation(

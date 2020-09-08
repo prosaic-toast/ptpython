@@ -343,8 +343,6 @@ def status_bar(python_input: "PythonInput") -> Container:
         append = result.append
 
         append((TB, f"In[{python_input.current_statement_index}] "))
-        result.extend(get_inputmode_fragments(python_input))
-        append((TB, " "))
 
         # Position in history.
         append(
@@ -354,6 +352,12 @@ def status_bar(python_input: "PythonInput") -> Container:
                 % (python_buffer.working_index + 1, len(python_buffer._working_lines)),
             )
         )
+
+        # Timing of last command
+        if python_input.last_timing is not None:
+            append((TB, f'{_format_time(python_input.last_timing)} '))
+
+        result.extend(get_inputmode_fragments(python_input))
 
         # Shortcuts.
         app = get_app()
@@ -428,21 +432,21 @@ def get_inputmode_fragments(python_input: "PythonInput") -> StyleAndTextTuples:
 
         if app.current_buffer.selection_state is not None:
             if app.current_buffer.selection_state.type == SelectionType.LINES:
-                append((input_mode_t, "Vi (VISUAL LINE)", toggle_vi_mode))
+                append((input_mode_t, "VIS-LINE", toggle_vi_mode))
             elif app.current_buffer.selection_state.type == SelectionType.CHARACTERS:
-                append((input_mode_t, "Vi (VISUAL)", toggle_vi_mode))
+                append((input_mode_t, "VIS", toggle_vi_mode))
                 append((token, " "))
             elif app.current_buffer.selection_state.type == SelectionType.BLOCK:
-                append((input_mode_t, "Vi (VISUAL BLOCK)", toggle_vi_mode))
+                append((input_mode_t, "VIS-BLOCK", toggle_vi_mode))
                 append((token, " "))
         elif mode in (InputMode.INSERT, "vi-insert-multiple"):
-            append((input_mode_t, "Vi (INSERT)", toggle_vi_mode))
+            append((input_mode_t, "INS", toggle_vi_mode))
             append((token, "  "))
         elif mode == InputMode.NAVIGATION:
-            append((input_mode_t, "Vi (NAV)", toggle_vi_mode))
+            append((input_mode_t, "NORMAL", toggle_vi_mode))
             append((token, "     "))
         elif mode == InputMode.REPLACE:
-            append((input_mode_t, "Vi (REPLACE)", toggle_vi_mode))
+            append((input_mode_t, "REPLACE", toggle_vi_mode))
             append((token, " "))
     else:
         if app.emacs_state.is_recording:
@@ -756,3 +760,24 @@ class PtPythonLayout:
 
         self.layout = Layout(root_container)
         self.sidebar = sidebar
+
+def _format_time(t, precision=3):
+    """Formats the timespan in a human readable form"""
+    if t < 1000:
+        return f'{t}ns'
+    t /= 1000
+
+    if t < 1000:
+        return f'{t:0.1f}µs'
+    t /= 1000
+
+    if t < 1000:
+        return f'{t:0.1f}ms'
+    t /= 1000
+
+    if t > 60:
+        m = t // 60
+        t -= m * 60
+        return f'{m}:{t:0.1f}min'
+    return f'{t:0.1f}s'
+
