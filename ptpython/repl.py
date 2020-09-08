@@ -34,6 +34,7 @@ from pygments.token import Token
 
 from .eventloop import inputhook
 from .python_input import PythonInput
+from .formatter import PtPyFormatter
 
 __all__ = ["PythonRepl", "enable_deprecation_warnings", "run_config", "embed"]
 
@@ -43,6 +44,7 @@ class PythonRepl(PythonInput):
         self._startup_paths = kw.pop("startup_paths", None)
         super().__init__(*a, **kw)
         self._load_start_paths()
+        self.formatter = PtPyFormatter()
         self.pt_loop = asyncio.new_event_loop()
 
     def _load_start_paths(self) -> None:
@@ -146,6 +148,12 @@ class PythonRepl(PythonInput):
                     print('Usage: %cd NEW_WORKING_DIRECTORY\n')
             elif cmd == 'pwd':
                 print(f'{os.getcwd()}\n')
+            elif cmd == 'hex':
+                self.formatter.set_int_fmt('x')
+                print('Displaying hex output')
+            elif cmd == 'dec':
+                self.formatter.set_int_fmt('d')
+                print('Displaying decimal output')
             else:
                 raise RuntimeError(f'Invalid magic command {cmd}')
         except Exception:
@@ -198,34 +206,39 @@ class PythonRepl(PythonInput):
 
                 if result is not None:
                     out_prompt = to_formatted_text(self.get_output_prompt())
-
                     try:
-                        result_str = "%r\n" % (result,)
-                    except UnicodeDecodeError:
-                        # In Python 2: `__repr__` should return a bytestring,
-                        # so to put it in a unicode context could raise an
-                        # exception that the 'ascii' codec can't decode certain
-                        # characters. Decode as utf-8 in that case.
-                        result_str = "%s\n" % repr(result).decode(  # type: ignore
-                            "utf-8"
-                        )
+                        formatted_output = self.formatter.format(result)
+                    except Exception as e:
+                        print(f'[TODO] Formatter exception: {e}')
+                        traceback.print_exc()
 
-                    # Align every line to the first one.
-                    line_sep = "\n" + " " * fragment_list_width(out_prompt)
-                    result_str = line_sep.join(result_str.splitlines()) + "\n"
+                        try:
+                            result_str = "%r\n" % (result,)
+                        except UnicodeDecodeError:
+                            # In Python 2: `__repr__` should return a bytestring,
+                            # so to put it in a unicode context could raise an
+                            # exception that the 'ascii' codec can't decode certain
+                            # characters. Decode as utf-8 in that case.
+                            result_str = "%s\n" % repr(result).decode(  # type: ignore
+                                "utf-8"
+                            )
 
-                    # Write output tokens.
-                    if self.enable_syntax_highlighting:
-                        formatted_output = merge_formatted_text(
-                            [
-                                out_prompt,
-                                PygmentsTokens(list(_lex_python_result(result_str))),
-                            ]
-                        )
-                    else:
-                        formatted_output = FormattedText(
-                            out_prompt + [("", result_str)]
-                        )
+                        # Align every line to the first one.
+                        line_sep = "\n" + " " * fragment_list_width(out_prompt)
+                        result_str = line_sep.join(result_str.splitlines()) + "\n"
+
+                        # Write output tokens.
+                        if self.enable_syntax_highlighting:
+                            formatted_output = merge_formatted_text(
+                                [
+                                    out_prompt,
+                                    PygmentsTokens(list(_lex_python_result(result_str))),
+                                ]
+                            )
+                        else:
+                            formatted_output = FormattedText(
+                                out_prompt + [("", result_str)]
+                            )
 
                     print_formatted_text(
                         formatted_output,
