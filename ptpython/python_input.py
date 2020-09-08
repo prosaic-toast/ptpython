@@ -51,7 +51,7 @@ from prompt_toolkit.utils import is_windows
 from prompt_toolkit.validation import ConditionalValidator, Validator
 from pygments.lexers import Python3Lexer as PythonLexer
 
-from .completer import PythonCompleter
+from .completer import PythonCompleter, create_ptpycompleter, create_ptpylexer
 from .history_browser import PythonHistory
 from .key_bindings import (
     load_confirm_exit_bindings,
@@ -181,15 +181,11 @@ class PythonInput:
         self.get_locals: _GetNamespace = get_locals or self.get_globals
 
         self._completer = _completer or FuzzyCompleter(
-            PythonCompleter(
-                self.get_globals,
-                self.get_locals,
-                lambda: self.enable_dictionary_completion,
-            ),
+            create_ptpycompleter(self),
             enable_fuzzy=Condition(lambda: self.enable_fuzzy_completion),
         )
         self._validator = _validator or PythonValidator(self.get_compiler_flags)
-        self._lexer = _lexer or PygmentsLexer(PythonLexer)
+        self._lexer = _lexer or create_ptpylexer()
 
         self.history: History
         if history_filename:

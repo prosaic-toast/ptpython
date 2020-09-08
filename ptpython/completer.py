@@ -12,6 +12,10 @@ from prompt_toolkit.completion import (
 from prompt_toolkit.contrib.regular_languages.compiler import compile as compile_grammar
 from prompt_toolkit.contrib.regular_languages.completion import GrammarCompleter
 from prompt_toolkit.document import Document
+from prompt_toolkit.contrib.completers import SystemCompleter
+from prompt_toolkit.contrib.regular_languages.lexer import GrammarLexer
+from prompt_toolkit.lexers import PygmentsLexer, SimpleLexer
+from pygments.lexers import BashLexer, PythonLexer
 
 from ptpython.utils import get_jedi_script_from_document
 
@@ -454,6 +458,70 @@ class DictionaryCompleter(Completer):
             return (0, name)  # Other names first.
 
         return sorted(names, key=sort_key)
+
+def create_ptpygrammar():
+    """
+    Return compiled PtPython grammar.
+    """
+    return compile_grammar(
+        r"""
+        \s*
+        (
+            (?P<percent>%)(
+                (?P<magic>run)  \s+ (?P<py_filename>[^\s]+)  |
+                (?P<magic>cat)                    \s+ (?P<filename>[^\s]+)     |
+                (?P<magic>cd)            \s+ (?P<directory>[^\s]+)    |
+                (?P<magic>debug) |
+                (?P<magic>pwd) |
+                (?P<magic>hex) |
+                (?P<magic>dec) |
+            ) .*            |
+            !(?P<system>.+) |
+            (?![%!]) (?P<python>.+)
+        )
+        \s*
+    """
+    )
+
+
+def create_ptpycompleter(inp):
+    return GrammarCompleter(
+            create_ptpygrammar(),
+            {
+                'python' : PythonCompleter(inp.get_globals, inp.get_locals, lambda: inp.enable_dictionary_completion),
+                'magic' : MagicCompleter(),
+                'py_filename': PathCompleter(only_directories=False, file_filter=lambda name: name.endswith('.py') or '.' not in name),
+                'filename': PathCompleter(only_directories=False),
+                'directory': PathCompleter(only_directories=True),
+                'system': SystemCompleter()
+            },
+        )
+
+def create_ptpylexer():
+    g = create_ptpygrammar()
+
+    return GrammarLexer(
+        g,
+        lexers={
+            "percent": SimpleLexer("class:pygments.operator"),
+            "magic": SimpleLexer("class:pygments.keyword"),
+            "filename": SimpleLexer("class:pygments.name"),
+            "python": PygmentsLexer(PythonLexer),
+            "system": PygmentsLexer(BashLexer),
+        },
+    )
+
+
+
+class MagicCompleter(Completer):
+    magics = sorted(['cd', 'pwd', 'debug', 'run', 'hex', 'dec'])
+
+    def get_completions(self, document, complete_event):
+        text = document.text_before_cursor.lstrip()
+
+        for m in self.magics:
+            if m.startswith(text):
+                yield Completion("%s" % m, -len(text))
 
 
 class ReprFailedError(Exception):
