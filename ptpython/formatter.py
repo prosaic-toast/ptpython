@@ -38,12 +38,12 @@ class PtPyFormatter:
         else:
             self.obj_fmt = obj_fmt
 
-    def set_bytes_fmt(self, show_index=True, show_ascii=True, line_items=16, index_color='class:blue', ascii_color='class:violet'):
+    def set_bytes_fmt(self, show_index=True, show_ascii=True, line_items=16, index_color='class:blue', ascii_color='class:magenta'):
         self.bytes_fmt = partial(hexdump, show_index=show_index,
             show_ascii=show_ascii,
             line_items=line_items,
             index_color='class:blue',
-            ascii_color='class:violet')
+            ascii_color='class:magenta')
 
     def set_int_fmt(self, format_string='d'):
         self.int_fmt = partial(display_int, format_string=format_string)
@@ -75,7 +75,7 @@ def display_string(s):
             out.append([('class:gray', repr(g).replace("'", ""))])
     return merge_formatted_text(out)
 
-def hexdump(seq, show_index=True, show_ascii=True, line_items=16, index_color='class:blue', ascii_color='class:violet'):
+def hexdump(seq, show_index=True, show_ascii=True, line_items=16, index_color='class:blue', ascii_color='class:magenta'):
     half_line_items = line_items // 2
 
     num_lines = (len(seq) + line_items - 1) // line_items

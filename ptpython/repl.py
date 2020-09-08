@@ -14,7 +14,9 @@ import sys
 import traceback
 import warnings
 import shlex
+import pdb
 from typing import Any, Callable, ContextManager, Dict, Optional
+from functools import partial
 
 from prompt_toolkit.document import Document
 from prompt_toolkit.formatted_text import (
@@ -46,6 +48,36 @@ class PythonRepl(PythonInput):
         self._load_start_paths()
         self.formatter = PtPyFormatter()
         self.pt_loop = asyncio.new_event_loop()
+        self.debug = self._find_debugger()
+
+    def _find_debugger(self) -> None:
+        try:
+            from IPython.core.debugger import BdbQuit_excepthook
+            from IPython.terminal.ipapp import TerminalIPythonApp
+        except ImportError:
+            return pdb.pm
+        self.ipapp = TerminalIPythonApp()
+        self.ipapp.interact = False
+        self.ipapp.initialize(['--no-term-title'])
+        self.BdbQuit_excepthook = BdbQuit_excepthook
+        return partial(PythonRepl._ipython_postmortem, self=self)
+
+    def _ipython_postmortem(self):
+        # make sure we wrap it sys.except_hook once or we would end up with a cycle
+        #  BdbQuit_excepthook.excepthook_ori == BdbQuit_excepthook
+        if sys.excepthook != self.BdbQuit_excepthook:
+            self.BdbQuit_excepthook.excepthook_ori = sys.excepthook
+            sys.excepthook = self.BdbQuit_excepthook
+
+        p = self.ipapp.shell.debugger_cls()
+        if getattr(sys, 'last_traceback', None):
+            try:
+                p.interaction(None, sys.last_traceback)
+            except AttributeError as ex:
+                if "no attribute 'botframe'" not in str(ex):
+                    self._handle_exception(ex)
+        else:
+            print('TODO No traceback available')
 
     def _load_start_paths(self) -> None:
         " Start the Read-Eval-Print Loop. "
@@ -141,6 +173,8 @@ class PythonRepl(PythonInput):
                         print()
                 else:
                     print('Usage: %run SCRIPT [...]\n')
+            elif cmd == 'debug':
+                self.debug()
             elif cmd == 'cd':
                 if len(args) == 1:
                     os.chdir(args[0])
@@ -432,3 +466,4 @@ def embed(
     else:
         with patch_context:
             repl.run()
+
