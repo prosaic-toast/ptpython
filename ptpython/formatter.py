@@ -51,7 +51,9 @@ class PtPyFormatter:
         self.int_fmt = partial(display_int, format_string=format_string, prefix=prefix, base_width=base_width)
 
     def format(self, o, list_depth=0):
-        if isinstance(o, int):
+        if isinstance(o, bool):
+            return FormattedText([('class:pygments.keyword.constant', str(o))])
+        elif isinstance(o, int):
             return self.int_fmt(o)
         elif isinstance(o, str):
             return self.str_fmt(o)
