@@ -1,7 +1,9 @@
 import string
 import unicodedata
-from itertools import groupby
+from itertools import groupby, cycle, chain
 from functools import partial
+import reprlib
+
 from prompt_toolkit.formatted_text import  (
     FormattedText,
     PygmentsTokens,
@@ -12,7 +14,7 @@ from prompt_toolkit.formatted_text import  (
 from pygments.lexers import PythonLexer, PythonTracebackLexer
 from pygments.token import Token
 
-
+MAX_LIST_DEPTH = reprlib.Repr().maxlevel
 
 class PtPyFormatter:
     def __init__(self, int_fmt=None, str_fmt=None, bytes_fmt=None, obj_fmt=None):
@@ -48,17 +50,59 @@ class PtPyFormatter:
     def set_int_fmt(self, format_string='d', prefix='', base_width=1):
         self.int_fmt = partial(display_int, format_string=format_string, prefix=prefix, base_width=base_width)
 
-    def format(self, o):
+    def format(self, o, list_depth=0):
         if isinstance(o, int):
             return self.int_fmt(o)
         elif isinstance(o, str):
             return self.str_fmt(o)
         elif isinstance(o, bytes):
-            return self.bytes_fmt(o)
+            return self.bytes_fmt(o, indent=list_depth)
+        elif isinstance(o, (list, set, dict, tuple)):
+            parens = '[]' if isinstance(o, list) else '()' if isinstance(o, tuple) else '{}'
+            out = [
+                    [('', parens[0])],
+                    self.joindict(o, list_depth + 1) if isinstance(o, dict) else self.joinlist(o, list_depth + 1),
+                    [('', parens[1])]
+                ]
+            return merge_formatted_text(out)()
         if type(o).__repr__ is object.__repr__:
             return self.obj_fmt(o)
         return FormattedText([('', repr(o))])
 
+    @staticmethod
+    def _get_joiner(list_num_items, list_depth, inner_len, inner_num_items):
+        joiner = (',\n' + ' ' * list_depth
+                ) if (2 * (inner_num_items - 1) + inner_len > 78 and list_num_items < 400
+                ) else ', '
+        return FormattedText([('', joiner)])
+
+    def joinlist(self, lst, list_depth):
+        if list_depth > MAX_LIST_DEPTH:
+            return FormattedText([('class:gray', '...')])
+        inner = [ self.format(a, list_depth) for a in lst ]
+        ln = get_formatted_text_length(merge_formatted_text(inner)())
+        joiner = self._get_joiner(len(lst), list_depth, ln, len(inner))
+        L = list(chain(*([l, joiner] for l in inner[:-1]), [inner[-1]]))
+        return merge_formatted_text(L)()
+
+    def joindict(self, dct, list_depth):
+        if list_depth > MAX_LIST_DEPTH:
+            return FormattedText([('class:gray', '...')])
+        inner = list(
+                chain(*(
+                    [self.format(k, list_depth), FormattedText([('', ': ')]),
+                        self.format(v, list_depth)]
+             for k, v in dct.items())))
+        ln = get_formatted_text_length(merge_formatted_text(inner)())
+        joiner = self._get_joiner(2 * len(dct), list_depth, ln, len(inner))
+        L = list(chain(*([l] + ([joiner] if j % 3 == 2 else []) for j, l in enumerate(inner[:-1])), [inner[-1]]))
+        return merge_formatted_text(L)()
+
+
+def get_formatted_text_length(x):
+
+    fragments = to_formatted_text(x)
+    return sum( (len(text) for _, text, *_ in fragments))
 
 def display_int(x, format_string='d', prefix='', base_width=1):
     x = f'{x:{format_string}}'
@@ -75,9 +119,13 @@ def display_string(s):
             out.append(PygmentsTokens(lexer.get_tokens(g)))
         else:
             out.append([('class:gray', repr(g).replace("'", ""))])
-    return merge_formatted_text(out)
+    out = to_formatted_text(merge_formatted_text(out))
+    if not s.endswith('\n') and out[-1] == ('class:pygments.text', '\n'):
+        # strip newline added by the lexer
+        out = FormattedText(out[:-1])
+    return out
 
-def hexdump(seq, show_index=True, show_ascii=True, line_items=16, index_color='class:blue', ascii_color='class:magenta'):
+def hexdump(seq, show_index=True, show_ascii=True, line_items=16, index_color='class:blue', ascii_color='class:magenta', indent=0):
     half_line_items = line_items // 2
 
     num_lines = (len(seq) + line_items - 1) // line_items
@@ -90,7 +138,11 @@ def hexdump(seq, show_index=True, show_ascii=True, line_items=16, index_color='c
         offset = line * line_items
         items = seq[offset:offset+line_items]
         num_items = len(items)
-        if show_ascii:
+        if indent > 0:
+            if line == 0:
+                out.append(('', '\n'))
+            out.append(' ' * indent)
+        if show_index:
             out.append((index_color, f'{index_template % offset}'))
 
         right_len = num_items - half_line_items
