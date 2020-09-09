@@ -475,6 +475,8 @@ def create_ptpygrammar():
                 (?P<magic>pwd) |
                 (?P<magic>hex) |
                 (?P<magic>dec) |
+                (?P<magic>bin) |
+                (?P<magic>oct) |
             ) .*            |
             !(?P<system>.+) |
             (?![%!]) (?P<python>.+)
@@ -514,7 +516,7 @@ def create_ptpylexer():
 
 
 class MagicCompleter(Completer):
-    magics = sorted(['cd', 'pwd', 'debug', 'run', 'hex', 'dec'])
+    magics = sorted(['cd', 'pwd', 'debug', 'run', 'hex', 'dec', 'oct', 'bin'])
 
     def get_completions(self, document, complete_event):
         text = document.text_before_cursor.lstrip()

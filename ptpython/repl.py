@@ -184,11 +184,13 @@ class PythonRepl(PythonInput):
             elif cmd == 'pwd':
                 print(f'{os.getcwd()}\n')
             elif cmd == 'hex':
-                self.formatter.set_int_fmt('x')
-                print('Displaying hex output')
+                self.formatter.set_int_fmt('x', '0x', 2)
             elif cmd == 'dec':
                 self.formatter.set_int_fmt('d')
-                print('Displaying decimal output')
+            elif cmd == 'bin':
+                self.formatter.set_int_fmt('b', '0b', 8)
+            elif cmd == 'oct':
+                self.formatter.set_int_fmt('o', '0o')
             else:
                 raise RuntimeError(f'Invalid magic command {cmd}')
         except Exception:

@@ -45,8 +45,8 @@ class PtPyFormatter:
             index_color='class:blue',
             ascii_color='class:magenta')
 
-    def set_int_fmt(self, format_string='d'):
-        self.int_fmt = partial(display_int, format_string=format_string)
+    def set_int_fmt(self, format_string='d', prefix='', base_width=1):
+        self.int_fmt = partial(display_int, format_string=format_string, prefix=prefix, base_width=base_width)
 
     def format(self, o):
         if isinstance(o, int):
@@ -60,8 +60,10 @@ class PtPyFormatter:
         return FormattedText([('', repr(o))])
 
 
-def display_int(x, format_string='d'):
-    return PygmentsTokens([(Token.Number.Integer, f'{x:{format_string}}')])
+def display_int(x, format_string='d', prefix='', base_width=1):
+    x = f'{x:{format_string}}'
+    num_zeros = (base_width - len(x) % base_width) % base_width
+    return PygmentsTokens([(Token.Number.Integer, f'{prefix}{"0" * num_zeros}{x}')])
 
 def display_string(s):
     lexer = PythonLexer()
