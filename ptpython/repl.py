@@ -78,7 +78,7 @@ class PythonRepl(PythonInput):
                 p.interaction(None, sys.last_traceback)
             except AttributeError as ex:
                 if "no attribute 'botframe'" not in str(ex):
-                    self._handle_exception(ex)
+                    self.handle_exception(ex)
         else:
             print('TODO No traceback available')
 
@@ -154,7 +154,7 @@ class PythonRepl(PythonInput):
             except KeyboardInterrupt as e:  # KeyboardInterrupt doesn't inherit from Exception.
                 self._handle_keyboard_interrupt(e)
             except Exception as e:
-                self._handle_exception(e)
+                self.handle_exception(e)
 
             if self.insert_blank_line_after_output:
                 self.app.output.write("\n")
@@ -302,7 +302,7 @@ class PythonRepl(PythonInput):
 
             output.flush()
 
-    def _handle_exception(self, e: Exception) -> None:
+    def handle_exception(self, e: Exception, store_traceback=True) -> None:
         output = self.app.output
 
         # Instead of just calling ``traceback.format_exc``, we take the
@@ -310,7 +310,8 @@ class PythonRepl(PythonInput):
         t, v, tb = sys.exc_info()
 
         # Required for pdb.post_mortem() to work.
-        sys.last_type, sys.last_value, sys.last_traceback = t, v, tb
+        if store_traceback:
+            sys.last_type, sys.last_value, sys.last_traceback = t, v, tb
 
         tblist = list(traceback.extract_tb(tb))
 
@@ -342,7 +343,8 @@ class PythonRepl(PythonInput):
             output=output,
         )
 
-        output.write("%s\n" % e)
+        print_formatted_text(
+                FormattedText([('class:pygments.generic.error', f'Stopped for exception: {e}')]), output=output)
         output.flush()
 
     def _handle_keyboard_interrupt(self, e: KeyboardInterrupt) -> None:

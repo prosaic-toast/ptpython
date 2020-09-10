@@ -47,7 +47,15 @@ class MagicHandler:
                         alt = f'{arg}.py'
                         if not os.path.exists(arg) and os.path.exists(alt):
                             arg = alt
-                        exec(open(arg, 'rt').read(), self.repl.get_globals())
+                        try:
+                            code = compile(open(arg, 'rt').read(), arg, 'exec')
+                        except Exception as ex:
+                            self.repl.handle_exception(ex, store_traceback=False)
+                            return
+                        try:
+                            exec(code, self.repl.get_globals())
+                        except Exception as ex:
+                            self.repl.handle_exception(ex)
                 else:
                     print('TODO Usage: %run SCRIPT [...]')
             elif cmd == 'debug':
