@@ -27,10 +27,15 @@ from prompt_toolkit.shortcuts import clear_title, print_formatted_text, set_titl
 from prompt_toolkit.utils import DummyContext
 from pygments.lexers import PythonLexer, PythonTracebackLexer
 from pygments.token import Token
+from prompt_toolkit.completion import (
+    CompleteEvent,
+    Completer,
+    Completion,
+    PathCompleter,
+)
 
-from .eventloop import inputhook
-from .python_input import PythonInput
-from .formatter import PtPyFormatter
+
+from .completer import Completer
 
 class MagicHandler:
 
@@ -80,3 +85,32 @@ class MagicHandler:
                 raise RuntimeError(f'Invalid magic command {cmd}')
         except Exception:
             traceback.print_exc()
+
+
+class MagicCompleter(Completer):
+    magics = {
+            'cd' : r'\s+ (?P<directory>[^\s]+)',
+            'run': r'\s+ (?P<py_filename>[^\s]+)',
+            'debug': '',
+            'pwd' : '',
+            'hex' : '',
+            'dec' : '',
+            'bin' : '',
+            'oct' : ''
+            }
+
+    @classmethod
+    def get_magic_grammar(cls):
+        out = ['            (?P<percent>%)(']
+        for k, v in cls.magics.items():
+            out.append(f'                (?P<magic>{k}) {v} |')
+        out.append(') |')
+        return '\n'.join(out)
+
+    def get_completions(self, document, complete_event):
+        text = document.text_before_cursor.lstrip()
+
+        for m in sorted(self.magics):
+            if m.startswith(text):
+                yield Completion("%s" % m, -len(text))
+

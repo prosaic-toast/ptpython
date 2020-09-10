@@ -19,6 +19,8 @@ from pygments.lexers import BashLexer, PythonLexer
 
 from ptpython.utils import get_jedi_script_from_document
 
+from .magic import MagicCompleter
+
 if TYPE_CHECKING:
     from prompt_toolkit.contrib.regular_languages.compiler import _CompiledGrammar
 
@@ -467,17 +469,7 @@ def create_ptpygrammar():
         r"""
         \s*
         (
-            (?P<percent>%)(
-                (?P<magic>run)  \s+ (?P<py_filename>[^\s]+)  |
-                (?P<magic>cat)                    \s+ (?P<filename>[^\s]+)     |
-                (?P<magic>cd)            \s+ (?P<directory>[^\s]+)    |
-                (?P<magic>debug) |
-                (?P<magic>pwd) |
-                (?P<magic>hex) |
-                (?P<magic>dec) |
-                (?P<magic>bin) |
-                (?P<magic>oct) |
-            ) .*            |
+""" + MagicCompleter.get_magic_grammar() + r"""
             !(?P<system>.+) |
             (?![%!]) (?P<python>.+)
         )
@@ -513,17 +505,6 @@ def create_ptpylexer():
         },
     )
 
-
-
-class MagicCompleter(Completer):
-    magics = sorted(['cd', 'pwd', 'debug', 'run', 'hex', 'dec', 'oct', 'bin'])
-
-    def get_completions(self, document, complete_event):
-        text = document.text_before_cursor.lstrip()
-
-        for m in self.magics:
-            if m.startswith(text):
-                yield Completion("%s" % m, -len(text))
 
 
 class ReprFailedError(Exception):
