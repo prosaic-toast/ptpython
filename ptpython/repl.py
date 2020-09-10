@@ -56,15 +56,17 @@ class PythonRepl(PythonInput):
 
     def debug(self):
         if getattr(sys, 'last_traceback', None):
-            print_formatted_text(
-                PygmentsTokens(self.last_traceback_tokens),
-                style=self._current_style,
-                style_transformation=self.style_transformation,
-                include_default_pygments_style=False,
-                output=self.app.output,
-            )
+            self.output_text( PygmentsTokens(self.last_traceback_tokens))
             self.debugger()
 
+    def output_text(self, formatted_text):
+        print_formatted_text(
+            formatted_text,
+            style=self._current_style,
+            style_transformation=self.style_transformation,
+            include_default_pygments_style=False,
+            output=self.app.output,
+        )
 
     def _find_debugger(self) -> None:
         try:
@@ -259,13 +261,7 @@ class PythonRepl(PythonInput):
                                 out_prompt + [("", result_str)]
                             )
 
-                    print_formatted_text(
-                        formatted_output,
-                        style=self._current_style,
-                        style_transformation=self.style_transformation,
-                        include_default_pygments_style=False,
-                        output=output,
-                    )
+                    self.output_text(formatted_output)
 
             # If not a valid `eval` expression, run using `exec` instead.
             except SyntaxError:
@@ -314,13 +310,7 @@ class PythonRepl(PythonInput):
         if store_traceback:
             self.last_traceback_tokens = tokens
 
-        print_formatted_text(
-            PygmentsTokens(tokens),
-            style=self._current_style,
-            style_transformation=self.style_transformation,
-            include_default_pygments_style=False,
-            output=output,
-        )
+        self.output_text(PygmentsTokens(tokens))
 
         self.print_error_message(f'Stopped for exception: {e}')
         output.flush()
@@ -332,9 +322,7 @@ class PythonRepl(PythonInput):
         output.flush()
 
     def print_error_message(self, msg):
-        print_formatted_text(
-                FormattedText([('class:pygments.generic.error', msg)]),
-                output=self.app.output)
+        self.output_text(FormattedText([('class:pygments.generic.error', msg)]),)
 
 
 def _lex_python_traceback(tb):
