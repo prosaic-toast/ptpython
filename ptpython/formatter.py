@@ -36,12 +36,12 @@ class PtPyFormatter:
             self.bytes_fmt = bytes_fmt
 
         if obj_fmt is None:
-            self.obj_fmt = lambda x: FormattedText([('', repr(x))])
+            self.obj_fmt = partial(display_object, formatter=self)
         else:
             self.obj_fmt = obj_fmt
 
     def set_bytes_fmt(self, show_index=True, show_ascii=True, line_items=16, index_color='class:blue', ascii_color='class:magenta'):
-        self.bytes_fmt = partial(hexdump, show_index=show_index,
+        self.bytes_fmt = partial(display_bytes, show_index=show_index,
             show_ascii=show_ascii,
             line_items=line_items,
             index_color='class:blue',
@@ -61,6 +61,8 @@ class PtPyFormatter:
             return self.bytes_fmt(o, indent=list_depth)
         elif isinstance(o, (list, set, dict, tuple)):
             parens = '[]' if isinstance(o, list) else '()' if isinstance(o, tuple) else '{}'
+            if len(o) == 0:
+                return FormattedText([('', parens)])
             out = [
                     [('', parens[0])],
                     self.joindict(o, list_depth + 1) if isinstance(o, dict) else self.joinlist(o, list_depth + 1),
@@ -68,13 +70,13 @@ class PtPyFormatter:
                 ]
             return merge_formatted_text(out)()
         if type(o).__repr__ is object.__repr__:
-            return self.obj_fmt(o)
+            return self.obj_fmt(o, indent=list_depth)
         return FormattedText([('', repr(o))])
 
     @staticmethod
     def _get_joiner(list_num_items, list_depth, inner_len, inner_num_items):
-        joiner = (',\n' + ' ' * list_depth
-                ) if (2 * (inner_num_items - 1) + inner_len > 78 and list_num_items < 400
+        joiner = (',\n' + '  ' * list_depth
+                ) if (2 * (inner_num_items - 1) + inner_len > 6 * 78 and list_num_items < 400
                 ) else ', '
         return FormattedText([('', joiner)])
 
@@ -92,8 +94,8 @@ class PtPyFormatter:
             return FormattedText([('class:gray', '...')])
         inner = list(
                 chain(*(
-                    [self.format(k, list_depth), FormattedText([('', ': ')]),
-                        self.format(v, list_depth)]
+                    [strip(self.format(k, list_depth)), FormattedText([('', ': ')]),
+                        strip(self.format(v, list_depth))]
              for k, v in dct.items())))
         ln = get_formatted_text_length(merge_formatted_text(inner)())
         joiner = self._get_joiner(2 * len(dct), list_depth, ln, len(inner))
@@ -101,8 +103,13 @@ class PtPyFormatter:
         return merge_formatted_text(L)()
 
 
-def get_formatted_text_length(x):
+def strip(x):
+    out = to_formatted_text(x)
+    if len(out) > 0 and out[-1][1] == '\n':
+        out = FormattedText(out[:-1])
+    return out
 
+def get_formatted_text_length(x):
     fragments = to_formatted_text(x)
     return sum( (len(text) for _, text, *_ in fragments))
 
@@ -122,12 +129,31 @@ def display_string(s):
         else:
             out.append([('class:gray', repr(g).replace("'", ""))])
     out = to_formatted_text(merge_formatted_text(out))
-    if not s.endswith('\n') and out[-1] == ('class:pygments.text', '\n'):
+    if not s.endswith('\n'):
         # strip newline added by the lexer
-        out = FormattedText(out[:-1])
+        out = strip(out)
     return out
 
-def hexdump(seq, show_index=True, show_ascii=True, line_items=16, index_color='class:blue', ascii_color='class:magenta', indent=0):
+def display_object(o, formatter, indent=0):
+    try:
+        type_name = o.__class__.__qualname__
+    except AttributeError:
+        return FormattedText([('', repr(o))])
+    out = [ FormattedText([('class:gray', '<'), ('class:pygments.name.class', type_name), ('class:gray', '>'), ('', '\n')]) ]
+    indent += 1
+    for attr in sorted(dir(o)):
+        if attr.startswith('_'):
+            continue
+        val = getattr(o, attr)
+        if callable(val):
+            continue
+        out.append(FormattedText([('', '  ' * indent), ('class:pygments.name.attribute', attr), ('', ': ')]))
+        out.append(to_formatted_text(formatter.format(val, indent + 1)))
+        out.append(FormattedText([('', '\n')]))
+    return merge_formatted_text(out)()
+
+
+def display_bytes(seq, show_index=True, show_ascii=True, line_items=16, index_color='class:blue', ascii_color='class:magenta', indent=0):
     half_line_items = line_items // 2
 
     num_lines = (len(seq) + line_items - 1) // line_items
@@ -143,7 +169,7 @@ def hexdump(seq, show_index=True, show_ascii=True, line_items=16, index_color='c
         if indent > 0:
             if line == 0:
                 out.append(('', '\n'))
-            out.append(' ' * indent)
+            out.append('  ' * indent)
         if show_index:
             out.append((index_color, f'{index_template % offset}'))
 
