@@ -50,8 +50,21 @@ class PythonRepl(PythonInput):
         self._load_start_paths()
         self.formatter = PtPyFormatter()
         self.pt_loop = asyncio.new_event_loop()
-        self.debug = self._find_debugger()
+        self.debugger = self._find_debugger()
         self.magic = MagicHandler(self)
+        self.last_traceback_tokens = None
+
+    def debug(self):
+        if getattr(sys, 'last_traceback', None):
+            print_formatted_text(
+                PygmentsTokens(self.last_traceback_tokens),
+                style=self._current_style,
+                style_transformation=self.style_transformation,
+                include_default_pygments_style=False,
+                output=self.app.output,
+            )
+            self.debugger()
+
 
     def _find_debugger(self) -> None:
         try:
@@ -80,7 +93,7 @@ class PythonRepl(PythonInput):
                 if "no attribute 'botframe'" not in str(ex):
                     self.handle_exception(ex)
         else:
-            print('TODO No traceback available')
+            self.print_error_message(f'Post-mortem debugger unavailable: no traceback stored')
 
     def _load_start_paths(self) -> None:
         " Start the Read-Eval-Print Loop. "
@@ -161,43 +174,6 @@ class PythonRepl(PythonInput):
 
             self.current_statement_index += 1
             self.signatures = []
-
-    def _run_magic(self, line):
-        try:
-            args = shlex.split(line)
-            cmd = args.pop(0)
-            if cmd == 'run':
-                if args:
-                    for arg in args:
-                        alt = f'{arg}.py'
-                        if not os.path.exists(arg) and os.path.exists(alt):
-                            arg = alt
-                        exec(open(arg, 'rt').read(), self.get_globals())
-                        print()
-                else:
-                    print('Usage: %run SCRIPT [...]\n')
-            elif cmd == 'debug':
-                self.debug()
-            elif cmd == 'cd':
-                if len(args) == 1:
-                    os.chdir(args[0])
-                else:
-                    print('Usage: %cd NEW_WORKING_DIRECTORY\n')
-            elif cmd == 'pwd':
-                print(f'{os.getcwd()}\n')
-            elif cmd == 'hex':
-                self.formatter.set_int_fmt('x', '0x', 2)
-            elif cmd == 'dec':
-                self.formatter.set_int_fmt('d')
-            elif cmd == 'bin':
-                self.formatter.set_int_fmt('b', '0b', 8)
-            elif cmd == 'oct':
-                self.formatter.set_int_fmt('o', '0o')
-            else:
-                raise RuntimeError(f'Invalid magic command {cmd}')
-        except Exception:
-            traceback.print_exc()
-
 
     def _execute(self, line: str) -> None:
         """
@@ -335,6 +311,9 @@ class PythonRepl(PythonInput):
         else:
             tokens = [(Token, tb_str)]
 
+        if store_traceback:
+            self.last_traceback_tokens = tokens
+
         print_formatted_text(
             PygmentsTokens(tokens),
             style=self._current_style,
@@ -343,8 +322,7 @@ class PythonRepl(PythonInput):
             output=output,
         )
 
-        print_formatted_text(
-                FormattedText([('class:pygments.generic.error', f'Stopped for exception: {e}')]), output=output)
+        self.print_error_message(f'Stopped for exception: {e}')
         output.flush()
 
     def _handle_keyboard_interrupt(self, e: KeyboardInterrupt) -> None:
@@ -352,6 +330,11 @@ class PythonRepl(PythonInput):
 
         output.write("\rKeyboardInterrupt\n\n")
         output.flush()
+
+    def print_error_message(self, msg):
+        print_formatted_text(
+                FormattedText([('class:pygments.generic.error', msg)]),
+                output=self.app.output)
 
 
 def _lex_python_traceback(tb):
