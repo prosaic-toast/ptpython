@@ -38,6 +38,7 @@ from pygments.token import Token
 from .eventloop import inputhook
 from .python_input import PythonInput
 from .formatter import PtPyFormatter
+from .magic import MagicHandler
 
 __all__ = ["PythonRepl", "enable_deprecation_warnings", "run_config", "embed"]
 
@@ -50,6 +51,7 @@ class PythonRepl(PythonInput):
         self.formatter = PtPyFormatter()
         self.pt_loop = asyncio.new_event_loop()
         self.debug = self._find_debugger()
+        self.magic = MagicHandler(self)
 
     def _find_debugger(self) -> None:
         try:
@@ -231,7 +233,7 @@ class PythonRepl(PythonInput):
             # Run as shell command
             os.system(line[1:])
         elif line.lstrip().startswith("%"):
-            self._run_magic(line[1:])
+            self.magic.run_command(line.lstrip()[1:])
         else:
             # Try eval first
             try:

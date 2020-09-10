@@ -148,7 +148,7 @@ def display_object(o, formatter, indent=0):
         if callable(val):
             continue
         out.append(FormattedText([('', '  ' * indent), ('class:pygments.name.attribute', attr), ('', ': ')]))
-        out.append(to_formatted_text(formatter.format(val, indent + 1)))
+        out.append(strip(formatter.format(val, indent + 1)))
         out.append(FormattedText([('', '\n')]))
     return merge_formatted_text(out)()
 
