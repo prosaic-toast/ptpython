@@ -47,6 +47,16 @@ class PythonRepl(PythonInput):
     def __init__(self, *a, **kw) -> None:
         self._startup_paths = kw.pop("startup_paths", None)
         super().__init__(*a, **kw)
+
+        pyver = sys.version.split("\n")[0]
+        self.version = kw.pop('version', None)
+        self.output_text(FormattedText([
+            ('', f'''Python {pyver}
+Type 'copyright', 'credits' or 'license' for more information
+MptPython {self.version if self.version is not None else ''} -- A magically enhanced PtPython. Type %help for help
+''')
+            ]))
+
         self._load_start_paths()
         self.formatter = PtPyFormatter()
         self.pt_loop = asyncio.new_event_loop()
@@ -102,6 +112,10 @@ class PythonRepl(PythonInput):
         if self._startup_paths:
             for path in self._startup_paths:
                 if os.path.exists(path):
+                    self.output_text(FormattedText([
+                        ('class:gray', 'Executing startup file '),
+                        ('', f'{path}')
+                        ]))
                     with open(path, "rb") as f:
                         code = compile(f.read(), path, "exec")
                         exec(code, self.get_globals(), self.get_locals())
@@ -394,6 +408,7 @@ def embed(
     startup_paths=None,
     patch_stdout: bool = False,
     return_asyncio_coroutine: bool = False,
+    version: Optional[str] = None,
 ) -> None:
     """
     Call this to embed  Python shell at the current point in your program.
@@ -431,6 +446,7 @@ def embed(
         vi_mode=vi_mode,
         history_filename=history_filename,
         startup_paths=startup_paths,
+        version=version,
     )
 
     if title:

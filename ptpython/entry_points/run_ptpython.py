@@ -173,6 +173,7 @@ def run() -> None:
             globals=__main__.__dict__,
             startup_paths=startup_paths,
             title="Python REPL (ptpython)",
+            version=metadata.version("ptpython"),
         )
 
 

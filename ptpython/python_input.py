@@ -175,6 +175,7 @@ class PythonInput:
         _extra_layout_body=None,
         _extra_toolbars=None,
         _input_buffer_height=None,
+        version=None,
     ) -> None:
 
         self.get_globals: _GetNamespace = get_globals or (lambda: {})
