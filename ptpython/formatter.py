@@ -36,9 +36,15 @@ class PtPyFormatter:
             self.bytes_fmt = bytes_fmt
 
         if obj_fmt is None:
-            self.obj_fmt = partial(display_object, formatter=self)
+            self.set_obj_fmt_pretty()
         else:
             self.obj_fmt = obj_fmt
+
+    def set_obj_fmt_simple(self):
+        self.obj_fmt = lambda o: FormattedText([('', repr(o))])
+
+    def set_obj_fmt_pretty(self):
+        self.obj_fmt = partial(display_object, formatter=self)
 
     def set_bytes_fmt(self, show_index=True, show_ascii=True, line_items=16, index_color='class:blue', ascii_color='class:magenta'):
         self.bytes_fmt = partial(display_bytes, show_index=show_index,
@@ -50,7 +56,7 @@ class PtPyFormatter:
     def set_int_fmt(self, format_string='d', prefix='', base_width=1):
         self.int_fmt = partial(display_int, format_string=format_string, prefix=prefix, base_width=base_width)
 
-    def format(self, o, list_depth=0):
+    def format(self, o, list_depth=0, force_pretty_repr=False):
         if isinstance(o, bool):
             return FormattedText([('class:pygments.keyword.constant', str(o))])
         elif isinstance(o, int):
@@ -69,7 +75,7 @@ class PtPyFormatter:
                     [('', parens[1])]
                 ]
             return merge_formatted_text(out)()
-        if type(o).__repr__ is object.__repr__:
+        if force_pretty_repr or type(o).__repr__ is object.__repr__:
             return self.obj_fmt(o, indent=list_depth)
         return FormattedText([('', repr(o))])
 

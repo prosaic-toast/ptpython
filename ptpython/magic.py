@@ -13,6 +13,7 @@ from functools import partial
 import time
 import re
 from collections import namedtuple
+import inspect
 
 from prompt_toolkit.document import Document
 from prompt_toolkit.formatted_text import (
@@ -38,12 +39,15 @@ from prompt_toolkit.completion import (
 
 
 from .completer import Completer
-from .formatter import strip
+from .formatter import strip, display_object, PtPyFormatter
 
 class MagicHandler:
 
     def __init__(self, repl):
         self.repl = repl
+        methods = set( ( m for m, _ in inspect.getmembers(self, predicate=inspect.ismethod) if not m.startswith('_')) )
+        methods.remove('run_command')
+        assert methods == set(MagicCompleter.magics), 'Methods in MagicHandler and dictionary in MagicCompleter are out of sync'
 
     def run_command(self, line):
         args = shlex.split(line)
@@ -54,6 +58,12 @@ class MagicHandler:
             self.repl.print_error_message(
                     f'No such magic command: %{cmd}. List of available magic commands:\n')
             self.repl.output_text(MagicCompleter.get_magics_help())
+
+    def simple(self, *args):
+        self.repl.formatter.set_obj_fmt_simple()
+
+    def pretty(self, *args):
+        self.repl.formatter.set_obj_fmt_pretty()
 
     def run(self, *args):
         if len(args) == 0:
@@ -86,6 +96,7 @@ class MagicHandler:
         else:
             self.repl.print_error_message('Invalid command. Usage:\n')
             self.repl.output_text(MagicCompleter.get_magics_help('cd'))
+
     def pwd(self, *args):
             self.repl.output_text(FormattedText([('class:pygments.literal.string', f'{os.getcwd()}')]))
 
@@ -123,6 +134,19 @@ class MagicHandler:
                     ])
         self.repl.output_text(strip(FormattedText(out)))
 
+    def pp(self, *args):
+        if len(args) == 0:
+            self.repl.print_error_message('Invalid command. Usage:\n')
+            self.repl.output_text(MagicCompleter.get_magics_help('cd'))
+            return
+        F = PtPyFormatter()
+        for a in args:
+            try:
+                code = compile(a, "argument", mode="eval")
+                result = eval(code, self.repl.get_globals(), self.repl.get_locals())
+                self.repl.output_text(F.format(result, force_pretty_repr=True))
+            except Exception as ex:
+                self.repl.print_error_message(f'Failed to pretty print {a}: {ex}')
 
 class MagicCompleter(Completer):
     magic_tuple = namedtuple('magic_tuple', ('grammar', 'usage', 'help'))
@@ -136,6 +160,9 @@ class MagicCompleter(Completer):
             'dec' : magic_tuple('', '', 'Display integers as decimal'),
             'bin' : magic_tuple('', '', 'Display integers as binary'),
             'oct' : magic_tuple('', '', 'Display integers as octal'),
+            'simple' : magic_tuple('', '', 'Display output with default Python repr'),
+            'pretty' : magic_tuple('', '', 'Display output with pretty alternative repr'),
+            'pp' : magic_tuple(r'(\s+ (?P<python>))+', 'OBJECT ...', 'Display each OBJECT in argument list with pretty alternative repr'),
             }
 
     @classmethod
